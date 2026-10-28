@@ -1,0 +1,1 @@
+# econometrics-note.github.io
