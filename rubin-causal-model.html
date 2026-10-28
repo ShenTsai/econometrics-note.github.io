@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>rubin-causal-model</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="rubin-causal-model_files/libs/clipboard/clipboard.min.js"></script>
+<script src="rubin-causal-model_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="rubin-causal-model_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="rubin-causal-model_files/libs/quarto-html/popper.min.js"></script>
+<script src="rubin-causal-model_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="rubin-causal-model_files/libs/quarto-html/anchor.min.js"></script>
+<link href="rubin-causal-model_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="rubin-causal-model_files/libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="rubin-causal-model_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="rubin-causal-model_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="rubin-causal-model_files/libs/bootstrap/bootstrap-917079515d91bccb85b543faf8aa8bb6.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-chtml.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+
+
+
+<section id="the-rubin-causal-model-potential-outcomes-randomization-wald-and-late" class="level1">
+<h1>The Rubin Causal Model: potential outcomes, randomization, Wald and LATE</h1>
+<p>This follows the lecture “Randomized Experiment, Wald Estimate, and Local Average Treatment Effect” and uses its notation. The running example is Miguel and Kremer (2004): deworming pills in Kenyan schools and their effect on school attendance.</p>
+<p><strong>Notation (from the slides):</strong></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><span class="math inline">\(D_i \in \{0,1\}\)</span></td>
+<td>treatment actually received (took the deworming pill)</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(Y_i(1),\ Y_i(0)\)</span></td>
+<td>potential outcomes: <span class="math inline">\(i\)</span>’s attendance <em>if</em> treated / <em>if</em> untreated</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(Y_i\)</span></td>
+<td>the observed outcome</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(Z_i \in \{0,1\}\)</span></td>
+<td>random assignment (school assigned to the treatment group)</td>
+</tr>
+<tr class="odd">
+<td><span class="math inline">\(D_i(Z_i{=}1),\ D_i(Z_i{=}0)\)</span></td>
+<td>potential treatment status under each assignment (the slides also write <span class="math inline">\(D_{1i}, D_{0i}\)</span>)</td>
+</tr>
+<tr class="even">
+<td><span class="math inline">\(\pi_c, \pi_n, \pi_a\)</span></td>
+<td>population shares of compliers, never-takers, always-takers</td>
+</tr>
+</tbody>
+</table>
+<p>Where a regression appears I use your notation <span class="math inline">\(y = \mathbf{X}\beta + e\)</span> with hats for estimates.</p>
+<hr>
+<section id="the-core-idea-two-potential-outcomes-per-person" class="level2">
+<h2 class="anchored" data-anchor-id="the-core-idea-two-potential-outcomes-per-person">1. The core idea: two potential outcomes per person</h2>
+<p>The Rubin Causal Model (RCM) defines a causal effect as a comparison of two states of the world for the <strong>same</strong> unit. Every child <span class="math inline">\(i\)</span> has two potential outcomes:</p>
+<p><span class="math display">\[
+Y_i = \begin{cases} Y_i(1) &amp; \text{if } D_i = 1 \\ Y_i(0) &amp; \text{if } D_i = 0 \end{cases}
+\qquad\Longleftrightarrow\qquad
+Y_i = Y_i(0) + D_i\,[\,Y_i(1) - Y_i(0)\,].
+\]</span></p>
+<p>The causal effect of deworming for child <span class="math inline">\(i\)</span> is <span class="math inline">\(Y_i(1) - Y_i(0)\)</span>.</p>
+<p><strong>The fundamental problem of causal inference:</strong> we only ever see one of the two. A child who took the pill shows us <span class="math inline">\(Y_i(1)\)</span>, and <span class="math inline">\(Y_i(0)\)</span> is a counterfactual that never happened. So individual effects are never observed. That is why the slides move straight to <em>averages</em>, which we can sometimes learn.</p>
+<blockquote class="blockquote">
+<p>The model also quietly assumes that <span class="math inline">\(i\)</span>’s outcome depends only on <span class="math inline">\(i\)</span>’s own treatment, not on whether classmates were treated (this is called SUTVA). The slides don’t name it, but keep it in mind for section 8, because deworming is a case where it fails.</p>
+</blockquote>
+</section>
+<section id="what-we-want-to-estimate" class="level2">
+<h2 class="anchored" data-anchor-id="what-we-want-to-estimate">2. What we want to estimate</h2>
+<p><strong>Average treatment effect (ATE):</strong> the average effect over everyone. <span class="math display">\[
+\text{ATE} = E[\,Y_i(1) - Y_i(0)\,]
+\]</span></p>
+<p><strong>Average treatment effect on the treated (ATET):</strong> the average effect among those who actually got treated. <span class="math display">\[
+\text{ATET} = E[\,Y_i(1) - Y_i(0) \mid D_i = 1\,] = E[Y_i(1)\mid D_i=1] - E[Y_i(0)\mid D_i=1]
+\]</span></p>
+<p>Neither is directly observable. In the ATET, <span class="math inline">\(E[Y_i(0)\mid D_i=1]\)</span> is “how often would the treated kids have attended if they had <em>not</em> been treated”, which is a counterfactual.</p>
+<p>ATE and ATET differ when effects are heterogeneous and the people who get treated are not a random slice of the population.</p>
+</section>
+<section id="the-naive-comparison-and-selection-bias" class="level2">
+<h2 class="anchored" data-anchor-id="the-naive-comparison-and-selection-bias">3. The naive comparison and selection bias</h2>
+<p>The obvious thing to compute is the difference in mean outcomes between treated and untreated. Both pieces are observed: <span class="math display">\[
+E[Y_i \mid D_i = 1] - E[Y_i \mid D_i = 0] = E[Y_i(1)\mid D_i=1] - E[Y_i(0)\mid D_i=0].
+\]</span></p>
+<p>Add and subtract the counterfactual <span class="math inline">\(E[Y_i(0)\mid D_i=1]\)</span>:</p>
+<p><span class="math display">\[
+\underbrace{E[Y_i(1)\mid D_i=1] - E[Y_i(0)\mid D_i=0]}_{\text{naive difference}}
+= \underbrace{E[Y_i(1) - Y_i(0)\mid D_i=1]}_{\text{ATET}}
++ \underbrace{E[Y_i(0)\mid D_i=1] - E[Y_i(0)\mid D_i=0]}_{\text{selection bias}}
+\]</span></p>
+<p>Selection bias is the difference in <em>untreated</em> outcomes between the two groups. It is about who they are, not about the treatment. In the deworming setting, pills could only be given to children who were at school that day. Children who attend more are healthier or richer to begin with, so <span class="math inline">\(E[Y_i(0)\mid D_i=1] &gt; E[Y_i(0)\mid D_i=0]\)</span>, and the naive comparison <strong>overstates</strong> the effect.</p>
+<p><strong>Regression view.</strong> The naive difference is exactly the OLS slope in <span class="math display">\[
+y_i = \beta_1 + \beta_2 D_i + e_i,\qquad \hat\beta_2 = \bar y_{D=1} - \bar y_{D=0}.
+\]</span> Selection bias is the regression problem you already know as <span class="math inline">\(E[e_i \mid D_i] \ne 0\)</span>: <span class="math inline">\(D_i\)</span> is correlated with the error, which contains <span class="math inline">\(Y_i(0)\)</span>.</p>
+</section>
+<section id="random-assignment-removes-selection-bias" class="level2">
+<h2 class="anchored" data-anchor-id="random-assignment-removes-selection-bias">4. Random assignment removes selection bias</h2>
+<p>If <span class="math inline">\(D_i\)</span> is randomly assigned, it is <strong>independent of the potential outcomes</strong>: <span class="math display">\[
+\{Y_i(1), Y_i(0)\} \perp D_i .
+\]</span> Then <span class="math inline">\(E[Y_i(0)\mid D_i=1] = E[Y_i(0)\mid D_i=0] = E[Y_i(0)]\)</span>, so selection bias is zero. Also <span class="math inline">\(E[Y_i(1)-Y_i(0)\mid D_i=1] = E[Y_i(1)-Y_i(0)]\)</span>, so ATET = ATE, and</p>
+<p><span class="math display">\[
+E[Y_i\mid D_i=1] - E[Y_i\mid D_i=0] = E[Y_i(1) - Y_i(0)] = \text{ATE}.
+\]</span></p>
+<p>In regression terms, randomization makes <span class="math inline">\(D_i\)</span> uncorrelated with <span class="math inline">\(e_i\)</span>, so <span class="math inline">\(\hat\beta_2\)</span> is unbiased for the ATE.</p>
+<p><strong>Balance checks (Table I).</strong> Randomization makes the groups equal <em>in expectation</em>. Miguel and Kremer check this by comparing pre-treatment (1998 baseline) characteristics across treatment and comparison schools. If the groups look similar on things measured before the program, that supports the claim that they are also similar on <span class="math inline">\(Y_i(0)\)</span>, which we cannot see. In R this is just a series of <code>lm(x ~ z)</code> regressions (or t-tests) on baseline covariates.</p>
+</section>
+<section id="the-catch-assignment-is-not-treatment" class="level2">
+<h2 class="anchored" data-anchor-id="the-catch-assignment-is-not-treatment">5. The catch: assignment is not treatment</h2>
+<p>In the deworming study, the thing randomized was the <strong>school</strong> (<span class="math inline">\(Z_i\)</span>), not who took the pill (<span class="math inline">\(D_i\)</span>). Table III shows the gap. In 1998, among Group 1 (treatment) pupils who were girls under 13 or boys, only <strong>0.78</strong> received any medical treatment, and for girls 13 and older only <strong>0.19</strong> did (older girls were not given one of the drugs for safety reasons). Comparison schools had 0. In 1999, Group 3 (still comparison) had about <strong>0.01</strong> treated.</p>
+<p>If everyone followed their assignment (<span class="math inline">\(D_i = Z_i\)</span>), the slide shows we would be done: <span class="math display">\[
+E[Y_i(1)\mid D_i=1] - E[Y_i(0)\mid D_i=0] = E[Y_i(1)\mid Z_i=1] - E[Y_i(0)\mid Z_i=0] = E[Y_i(1)-Y_i(0)].
+\]</span> With imperfect take-up, the slides ask which comparison is right. There are three candidates:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Comparison</th>
+<th>What it compares</th>
+<th>Problem</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>As-treated</strong></td>
+<td>took the pill vs did not</td>
+<td>This is the naive comparison again, with selection bias. Who takes the pill is not random.</td>
+</tr>
+<tr class="even">
+<td><strong>Per-protocol</strong></td>
+<td>took the pill (in treatment schools) vs everyone in comparison schools</td>
+<td>Still biased: the pill-takers inside treatment schools are a selected group (they showed up).</td>
+</tr>
+<tr class="odd">
+<td><strong>Intention to treat (ITT)</strong></td>
+<td>everyone <em>assigned</em> to treatment vs everyone assigned to comparison</td>
+<td>Unbiased, because <span class="math inline">\(Z_i\)</span> is random. But it measures the effect of <em>being offered</em> the pill, diluted by non-takers.</td>
+</tr>
+</tbody>
+</table>
+<p>The ITT is <span class="math inline">\(E[Y_i\mid Z_i=1] - E[Y_i\mid Z_i=0]\)</span>. The rest of the lecture shows how to rescale it into a treatment effect.</p>
+</section>
+<section id="compliance-types" class="level2">
+<h2 class="anchored" data-anchor-id="compliance-types">6. Compliance types</h2>
+<p>Each child has two <strong>potential treatment statuses</strong>, <span class="math inline">\(D_i(Z_i{=}1)\)</span> and <span class="math inline">\(D_i(Z_i{=}0)\)</span>: whether they would take the pill if their school were assigned to treatment, and if it were not. That splits the population into four types:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th><span class="math inline">\(D_i(Z_i{=}1)\)</span></th>
+<th><span class="math inline">\(D_i(Z_i{=}0)\)</span></th>
+<th>Deworming story</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Compliers</strong></td>
+<td>1</td>
+<td>0</td>
+<td>take the pill only when offered</td>
+</tr>
+<tr class="even">
+<td><strong>Never-takers</strong></td>
+<td>0</td>
+<td>0</td>
+<td>never treated (e.g.&nbsp;absent on pill day)</td>
+</tr>
+<tr class="odd">
+<td><strong>Always-takers</strong></td>
+<td>1</td>
+<td>1</td>
+<td>treated regardless (e.g.&nbsp;got deworming elsewhere)</td>
+</tr>
+<tr class="even">
+<td><strong>Defiers</strong></td>
+<td>0</td>
+<td>1</td>
+<td>do the opposite of assignment</td>
+</tr>
+</tbody>
+</table>
+<p>Like potential outcomes, the type is never directly observed for an individual. A treated child in a treatment school could be a complier or an always-taker.</p>
+</section>
+<section id="the-wald-estimate-and-the-late-theorem" class="level2">
+<h2 class="anchored" data-anchor-id="the-wald-estimate-and-the-late-theorem">7. The Wald estimate and the LATE theorem</h2>
+<section id="assumptions-a1-to-a4-in-the-slides" class="level3">
+<h3 class="anchored" data-anchor-id="assumptions-a1-to-a4-in-the-slides">Assumptions (A1 to A4 in the slides)</h3>
+<ol type="1">
+<li><strong>Independence.</strong> <span class="math inline">\(Z_i\)</span> is independent of the potential outcomes and potential treatments: <span class="math inline">\(\{Y_i(\cdot), D_i(1), D_i(0)\} \perp Z_i\)</span>. Randomization delivers this.</li>
+<li><strong>Exclusion.</strong> <span class="math inline">\(Z_i\)</span> affects <span class="math inline">\(Y\)</span> only through <span class="math inline">\(D\)</span>. Being in a treatment school does not change attendance except via the pill.</li>
+<li><strong>First stage.</strong> <span class="math inline">\(E[D_i\mid Z_i=1] - E[D_i\mid Z_i=0] &gt; 0\)</span>. Assignment actually moves take-up. The share of people who take the treatment (<span class="math inline">\(D_i = 1\)</span>) must be higher among those assigned to it (<span class="math inline">\(Z_i = 1\)</span>) than among those not assigned (<span class="math inline">\(Z_i = 0\)</span>).</li>
+<li><strong>Monotonicity (no defiers).</strong> Nobody is pushed <em>out</em> of treatment by being assigned to it.</li>
+</ol>
+</section>
+<section id="step-1-recover-the-type-shares" class="level3">
+<h3 class="anchored" data-anchor-id="step-1-recover-the-type-shares">Step 1: recover the type shares</h3>
+<p>Under independence and no defiers:</p>
+<ul>
+<li>In comparison schools, only always-takers are treated: <span class="math inline">\(E[D_i\mid Z_i=0] = \pi_a\)</span>.</li>
+<li>In treatment schools, always-takers and compliers are treated: <span class="math inline">\(E[D_i\mid Z_i=1] = \pi_a + \pi_c\)</span>.</li>
+</ul>
+<p>So <span class="math display">\[
+\pi_a = E[D_i\mid Z_i=0],\qquad
+\pi_c = E[D_i\mid Z_i=1] - E[D_i\mid Z_i=0],\qquad
+\pi_n = 1 - E[D_i\mid Z_i=1].
+\]</span></p>
+</section>
+<section id="step-2-decompose-the-itt-by-type" class="level3">
+<h3 class="anchored" data-anchor-id="step-2-decompose-the-itt-by-type">Step 2: decompose the ITT by type</h3>
+<p>Split <span class="math inline">\(E[Y_i\mid Z_i=1]\)</span> by type. Independence means the type shares are the same in both arms, and exclusion means each type’s outcome depends only on its <span class="math inline">\(D\)</span>: <span class="math display">\[
+E[Y_i\mid Z_i=1] = E[Y_i(1)\mid \text{complier}]\,\pi_c + E[Y_i(0)\mid \text{never-taker}]\,\pi_n + E[Y_i(1)\mid \text{always-taker}]\,\pi_a
+\]</span> <span class="math display">\[
+E[Y_i\mid Z_i=0] = E[Y_i(0)\mid \text{complier}]\,\pi_c + E[Y_i(0)\mid \text{never-taker}]\,\pi_n + E[Y_i(1)\mid \text{always-taker}]\,\pi_a
+\]</span></p>
+<p>Subtract. Never-takers and always-takers have the same <span class="math inline">\(D\)</span> in both arms, so their terms cancel. Only compliers change treatment status, so only they contribute: <span class="math display">\[
+E[Y_i\mid Z_i=1] - E[Y_i\mid Z_i=0] = E[\,Y_i(1) - Y_i(0)\mid \text{complier}\,]\cdot \pi_c .
+\]</span></p>
+</section>
+<section id="step-3-divide-by-the-first-stage" class="level3">
+<h3 class="anchored" data-anchor-id="step-3-divide-by-the-first-stage">Step 3: divide by the first stage</h3>
+<p><span class="math display">\[
+\boxed{\;\text{Wald estimate} = \beta_{IV} = \frac{E[Y_i\mid Z_i=1] - E[Y_i\mid Z_i=0]}{E[D_i\mid Z_i=1] - E[D_i\mid Z_i=0]} = E[\,Y_i(1) - Y_i(0)\mid D_{1i} &gt; D_{0i}\,] = \text{LATE}\;}
+\]</span></p>
+<p>In words: <strong>ITT divided by the share of compliers equals the average effect for compliers.</strong> This is the <strong>local average treatment effect</strong> (Imbens and Angrist, 1994).</p>
+</section>
+<section id="is-it-the-ate-no." class="level3">
+<h3 class="anchored" data-anchor-id="is-it-the-ate-no.">Is it the ATE? No.</h3>
+<p>The data say nothing about the effect for never-takers (we never see them treated) or always-takers (we never see them untreated). The LATE is “local” to the compliers. If deworming helps chronically absent children the most, and those children are mostly never-takers, the LATE can be well below the ATE.</p>
+<p>Two notes on the slides’ wording:</p>
+<ul>
+<li>Slide 18 calls the result “ATET”. It is the effect for <strong>compliers</strong>, which equals the ATET only when there are no always-takers. That happens to be the 1998 deworming case: comparison schools had take-up of 0 (Table III), so <span class="math inline">\(\pi_a = 0\)</span>, every treated child is a complier, and LATE = ATET there. In general they differ.</li>
+<li>The sample Wald estimator is a ratio of sample means, so strictly it is <em>consistent</em> for the LATE rather than exactly unbiased in finite samples.</li>
+</ul>
+</section>
+<section id="regression-form" class="level3">
+<h3 class="anchored" data-anchor-id="regression-form">Regression form</h3>
+<p>The slides note that the ITT is the OLS slope from regressing <span class="math inline">\(Y\)</span> on a constant and <span class="math inline">\(Z\)</span>. In full:</p>
+<ul>
+<li><strong>Reduced form:</strong> <span class="math inline">\(y_i = \gamma_1 + \gamma_2 Z_i + u_i\)</span>, with <span class="math inline">\(\hat\gamma_2 = \bar y_{Z=1} - \bar y_{Z=0}\)</span> (the ITT).</li>
+<li><strong>First stage:</strong> <span class="math inline">\(D_i = \delta_1 + \delta_2 Z_i + v_i\)</span>, with <span class="math inline">\(\hat\delta_2 = \bar D_{Z=1} - \bar D_{Z=0}\)</span> (estimates <span class="math inline">\(\pi_c\)</span>).</li>
+<li><strong>Wald / IV:</strong> <span class="math inline">\(\hat\beta_{IV} = \hat\gamma_2 / \hat\delta_2\)</span>.</li>
+</ul>
+<p>With one binary instrument and no covariates, this equals the 2SLS estimate of <span class="math inline">\(\beta_2\)</span> in <span class="math inline">\(y_i = \beta_1 + \beta_2 D_i + e_i\)</span> using <span class="math inline">\(Z_i\)</span> as the instrument for <span class="math inline">\(D_i\)</span>. In matrix form with <span class="math inline">\(\mathbf{X} = [\mathbf{1}, D]\)</span> and <span class="math inline">\(\mathbf{Z} = [\mathbf{1}, Z]\)</span>: <span class="math inline">\(\hat\beta_{IV} = (\mathbf{Z}'\mathbf{X})^{-1}\mathbf{Z}'y\)</span>.</p>
+</section>
+</section>
+<section id="a-caveat-specific-to-deworming-spillovers" class="level2">
+<h2 class="anchored" data-anchor-id="a-caveat-specific-to-deworming-spillovers">8. A caveat specific to deworming: spillovers</h2>
+<p>Finding 2 in the slides is that deworming improved health and attendance among <em>untreated</em> children in treatment schools and in neighboring schools. Worms spread, so treating your classmates helps you. This breaks the “my outcome depends only on my treatment” assumption from section 1, and it also bends exclusion: being in a treatment school helps a never-taker even without the pill. It is the reason Miguel and Kremer randomized at the <strong>school</strong> level rather than the pupil level. Within-school comparisons of takers vs non-takers would understate the effect, because the non-takers were partly protected too.</p>
+<hr>
+</section>
+<section id="r-simulation-see-every-estimand-side-by-side" class="level2">
+<h2 class="anchored" data-anchor-id="r-simulation-see-every-estimand-side-by-side">9. R simulation: see every estimand side by side</h2>
+<p>The simulation builds a population where we know everyone’s type and both potential outcomes, so we can compute the true ATE, ATET and LATE, then check what each estimator recovers. The outcome is an attendance rate.</p>
+<p>Design (population values):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Share</th>
+<th><span class="math inline">\(E[Y(0)]\)</span></th>
+<th>Effect <span class="math inline">\(Y(1)-Y(0)\)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Complier</td>
+<td>0.6</td>
+<td>0.75</td>
+<td>0.10</td>
+</tr>
+<tr class="even">
+<td>Never-taker</td>
+<td>0.3</td>
+<td>0.55</td>
+<td>0.20</td>
+</tr>
+<tr class="odd">
+<td>Always-taker</td>
+<td>0.1</td>
+<td>0.85</td>
+<td>0.02</td>
+</tr>
+</tbody>
+</table>
+<p>Never-takers have low baseline attendance (they miss pill day) and would benefit most. Always-takers are healthy and gain little.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">2004</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>n <span class="ot">&lt;-</span> <span class="dv">200000</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>type <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">c</span>(<span class="st">"complier"</span>, <span class="st">"never"</span>, <span class="st">"always"</span>), n, <span class="at">replace =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">prob =</span> <span class="fu">c</span>(<span class="fl">0.6</span>, <span class="fl">0.3</span>, <span class="fl">0.1</span>))</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># potential outcomes</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>y0 <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">complier =</span> <span class="fl">0.75</span>, <span class="at">never =</span> <span class="fl">0.55</span>, <span class="at">always =</span> <span class="fl">0.85</span>)[type] <span class="sc">+</span> <span class="fu">rnorm</span>(n, <span class="at">sd =</span> <span class="fl">0.05</span>)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>te <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">complier =</span> <span class="fl">0.10</span>, <span class="at">never =</span> <span class="fl">0.20</span>, <span class="at">always =</span> <span class="fl">0.02</span>)[type]</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>y1 <span class="ot">&lt;-</span> y0 <span class="sc">+</span> te</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># random assignment and potential treatment status</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>z  <span class="ot">&lt;-</span> <span class="fu">rbinom</span>(n, <span class="dv">1</span>, <span class="fl">0.5</span>)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>d1 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(type <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"complier"</span>, <span class="st">"always"</span>))  <span class="co"># D_i(Z = 1)</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>d0 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(type <span class="sc">==</span> <span class="st">"always"</span>)                    <span class="co"># D_i(Z = 0)</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>d  <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(z <span class="sc">==</span> <span class="dv">1</span>, d1, d0)</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co"># observed outcome: we only ever see one potential outcome</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>y  <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(d <span class="sc">==</span> <span class="dv">1</span>, y1, y0)</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>dat <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(y, d, z, type)</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- true parameters (only knowable in a simulation) ----</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">ATE  =</span> <span class="fu">mean</span>(y1 <span class="sc">-</span> y0),</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">ATET =</span> <span class="fu">mean</span>((y1 <span class="sc">-</span> y0)[d <span class="sc">==</span> <span class="dv">1</span>]),</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="at">LATE =</span> <span class="fu">mean</span>((y1 <span class="sc">-</span> y0)[type <span class="sc">==</span> <span class="st">"complier"</span>]))</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">#  ATE ~ 0.122, ATET ~ 0.080, LATE ~ 0.100</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co"># ---- estimators ----</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>as_treated   <span class="ot">&lt;-</span> <span class="fu">coef</span>(<span class="fu">lm</span>(y <span class="sc">~</span> d, <span class="at">data =</span> dat))[<span class="st">"d"</span>]            <span class="co"># naive: ~0.205</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>per_protocol <span class="ot">&lt;-</span> <span class="fu">mean</span>(y[z <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> d <span class="sc">==</span> <span class="dv">1</span>]) <span class="sc">-</span> <span class="fu">mean</span>(y[z <span class="sc">==</span> <span class="dv">0</span>])   <span class="co"># ~0.151</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>itt          <span class="ot">&lt;-</span> <span class="fu">coef</span>(<span class="fu">lm</span>(y <span class="sc">~</span> z, <span class="at">data =</span> dat))[<span class="st">"z"</span>]             <span class="co"># reduced form: ~0.060</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>first_stage  <span class="ot">&lt;-</span> <span class="fu">coef</span>(<span class="fu">lm</span>(d <span class="sc">~</span> z, <span class="at">data =</span> dat))[<span class="st">"z"</span>]             <span class="co"># pi_c: ~0.60</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>wald         <span class="ot">&lt;-</span> itt <span class="sc">/</span> first_stage                            <span class="co"># ~0.100 = LATE</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">as_treated =</span> <span class="fu">unname</span>(as_treated), <span class="at">per_protocol =</span> per_protocol,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>        <span class="at">itt =</span> <span class="fu">unname</span>(itt), <span class="at">first_stage =</span> <span class="fu">unname</span>(first_stage),</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>        <span class="at">wald =</span> <span class="fu">unname</span>(wald)), <span class="dv">3</span>)</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co"># type shares recovered from the data alone</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="fu">c</span>(<span class="at">pi_a =</span> <span class="fu">mean</span>(d[z <span class="sc">==</span> <span class="dv">0</span>]),</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">pi_c =</span> <span class="fu">mean</span>(d[z <span class="sc">==</span> <span class="dv">1</span>]) <span class="sc">-</span> <span class="fu">mean</span>(d[z <span class="sc">==</span> <span class="dv">0</span>]),</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>  <span class="at">pi_n =</span> <span class="dv">1</span> <span class="sc">-</span> <span class="fu">mean</span>(d[z <span class="sc">==</span> <span class="dv">1</span>]))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>What to notice:</p>
+<ul>
+<li><strong>As-treated</strong> (~0.205) is far too big, because of selection bias: takers have high <span class="math inline">\(Y(0)\)</span>.</li>
+<li><strong>Per-protocol</strong> (~0.151) is still biased for the same reason.</li>
+<li><strong>ITT</strong> (~0.060) is unbiased for the effect of <em>assignment</em>, but diluted: <span class="math inline">\(0.10 \times 0.6\)</span>.</li>
+<li><strong>Wald</strong> (~0.100) recovers the <strong>LATE</strong> exactly, not the ATE (0.122) or the ATET (0.080).</li>
+</ul>
+<section id="the-same-thing-as-2sls" class="level3">
+<h3 class="anchored" data-anchor-id="the-same-thing-as-2sls">The same thing as 2SLS</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("AER")</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(AER)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>iv <span class="ot">&lt;-</span> <span class="fu">ivreg</span>(y <span class="sc">~</span> d <span class="sc">|</span> z, <span class="at">data =</span> dat)   <span class="co"># instrument d with z</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="fu">coef</span>(iv)[<span class="st">"d"</span>]                        <span class="co"># identical to `wald` above</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(iv)                          <span class="co"># gives a proper IV standard error</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># or with fixest:</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># library(fixest); feols(y ~ 1 | d ~ z, data = dat)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Use the IV regression rather than dividing two <code>lm</code> coefficients when you need standard errors. In a real cluster-randomized study like deworming you would also cluster by school, e.g.&nbsp;<code>feols(y ~ 1 | d ~ z, data = dat, cluster = ~school)</code>.</p>
+</section>
+<section id="the-wald-estimate-in-duckdb" class="level3">
+<h3 class="anchored" data-anchor-id="the-wald-estimate-in-duckdb">The Wald estimate in DuckDB</h3>
+<p>Since it is just four conditional means, it is a one-query job:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(duckdb)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>con <span class="ot">&lt;-</span> <span class="fu">dbConnect</span>(<span class="fu">duckdb</span>())</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">duckdb_register</span>(con, <span class="st">"dat"</span>, dat)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">dbGetQuery</span>(con, <span class="st">"</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="st">  SELECT</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="st">    AVG(y) FILTER (WHERE z = 1) - AVG(y) FILTER (WHERE z = 0) AS itt,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="st">    AVG(d) FILTER (WHERE z = 1) - AVG(d) FILTER (WHERE z = 0) AS first_stage,</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="st">    itt / first_stage                                         AS wald</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="st">  FROM dat</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="st">"</span>)</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="fu">dbDisconnect</span>(con, <span class="at">shutdown =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="try-this" class="level3">
+<h3 class="anchored" data-anchor-id="try-this">Try this</h3>
+<ol type="1">
+<li>Set the always-taker share to 0 (one-sided non-compliance, like deworming in 1998). Check that the true ATET and the LATE become equal, and that Wald recovers both.</li>
+<li>Make all three effects equal (say 0.1). Now ATE = ATET = LATE, and only the as-treated and per-protocol comparisons are wrong. Heterogeneity is what makes “local” matter.</li>
+<li>Add some defiers (<code>D(1) = 0, D(0) = 1</code>) with a different effect. Watch the Wald estimate drift away from the complier effect. That is why monotonicity (A4) is needed.</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="one-paragraph-summary" class="level2">
+<h2 class="anchored" data-anchor-id="one-paragraph-summary">One-paragraph summary</h2>
+<p>The RCM defines a causal effect as <span class="math inline">\(Y_i(1) - Y_i(0)\)</span>, which is never observed for any one person, so we target averages such as the ATE and ATET. Comparing treated with untreated gives ATET plus selection bias. Random assignment makes treatment independent of potential outcomes, which kills selection bias, so a simple difference in means (the OLS slope on <span class="math inline">\(D\)</span>) estimates the ATE. When people do not follow their assignment, compare by <em>assignment</em> instead (ITT) and divide by the first-stage difference in take-up. Under independence, exclusion, a non-zero first stage, and no defiers, that Wald ratio equals the average effect for <strong>compliers</strong>, the LATE, and not the ATE.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
